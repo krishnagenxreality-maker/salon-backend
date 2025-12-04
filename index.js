@@ -5,12 +5,19 @@ const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
+// CRITICAL FOR RENDER: Must use process.env.PORT
 const PORT = process.env.PORT || 3001;
 const DB_FILE = path.join(__dirname, 'database.json');
 
 // Middleware
-app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for base64 images
+// Allow requests from anywhere (for now) to solve connection issues
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(bodyParser.json({ limit: '50mb' }));
 
 // Initialize Data
 let db = {
@@ -33,14 +40,21 @@ if (fs.existsSync(DB_FILE)) {
 
 // Helper to save data
 const saveData = () => {
+    // On Render Free Tier, this file resets on deployment, but persists while running
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 };
 
 // --- ROUTES ---
 
+// Health Check (To verify server is running on Render)
+app.get('/', (req, res) => {
+    res.send('Salon Backend is Running!');
+});
+
 // Login
 app.post('/api/login', (req, res) => {
     const { id, password, role } = req.body;
+    console.log(`Login attempt: ${id} (${role})`);
 
     if (role === 'admin') {
         const admin = db.admins.find(a => a.id === id && a.password === password);
@@ -52,7 +66,6 @@ app.post('/api/login', (req, res) => {
     } else {
         const user = db.users.find(u => (u.applicationNumber === id || u.id === id) && u.password === password);
         if (user) {
-            // Don't send password back
             const { password, ...userWithoutPass } = user;
             res.json({ success: true, user: userWithoutPass });
         } else {
@@ -61,12 +74,11 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// Register (Create ID)
+// Register
 app.post('/api/register', (req, res) => {
     const { applicationNumber, password, role } = req.body;
 
     if (role === 'admin') {
-        // Simple check to prevent overwriting main admin
         if (db.admins.find(a => a.id === applicationNumber)) {
             return res.status(400).json({ success: false, message: 'Admin ID already exists' });
         }
@@ -94,7 +106,7 @@ app.post('/api/register', (req, res) => {
     }
 });
 
-// Update Password
+// Reset Password
 app.post('/api/reset-password', (req, res) => {
     const { id, newPassword, role } = req.body;
     
@@ -119,14 +131,13 @@ app.post('/api/reset-password', (req, res) => {
     }
 });
 
-// Get All Users (Admin)
+// Get Users
 app.get('/api/users', (req, res) => {
-    // Return users without passwords
     const safeUsers = db.users.map(({ password, ...u }) => u);
     res.json(safeUsers);
 });
 
-// Get User By ID
+// Get Single User
 app.get('/api/users/:id', (req, res) => {
     const user = db.users.find(u => u.id === req.params.id);
     if (user) {
@@ -137,7 +148,7 @@ app.get('/api/users/:id', (req, res) => {
     }
 });
 
-// Save Completed Technique
+// Save Progress
 app.post('/api/training/complete', (req, res) => {
     const { userId, techniqueData } = req.body;
     const user = db.users.find(u => u.id === userId);
@@ -151,7 +162,7 @@ app.post('/api/training/complete', (req, res) => {
     }
 });
 
-// Save Customer Session
+// Save Session
 app.post('/api/session/complete', (req, res) => {
     const { userId, sessionData } = req.body;
     const user = db.users.find(u => u.id === userId);
@@ -166,5 +177,5 @@ app.post('/api/session/complete', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
