@@ -26,6 +26,66 @@
             179
           ],
           "totalTime": 4263
+        },
+        {
+          "techniqueId": "one-length",
+          "techniqueTitle": "One Length",
+          "completedAt": 1766125743563,
+          "stepTimings": [
+            1459,
+            13226,
+            1249,
+            154,
+            161,
+            158,
+            169,
+            156,
+            214,
+            677,
+            165,
+            210
+          ],
+          "totalTime": 17998
+        },
+        {
+          "techniqueId": "one-length",
+          "techniqueTitle": "One Length",
+          "completedAt": 1766126281086,
+          "stepTimings": [
+            3283,
+            1022,
+            1030,
+            960,
+            764,
+            718,
+            656,
+            653,
+            617,
+            656,
+            651,
+            1284
+          ],
+          "totalTime": 12294
+        },
+        {
+          "techniqueId": "one-length",
+          "techniqueTitle": "One Length",
+          "completedAt": 1766126414229,
+          "stepTimings": [
+            1588,
+            160,
+            179,
+            156,
+            157,
+            171,
+            161,
+            177,
+            172,
+            175,
+            165,
+            166
+          ],
+          "totalTime": 3427
         }
       ],
       "customerSessions": [
@@ -88,6 +148,33 @@
               "timestamp": 1764832820871
             }
           ],
+          "rating": 0
+        },
+        {
+          "id": "sess_1766126830160",
+          "timestamp": 1766126830160,
+          "serviceName": "Haircuts & Styling",
+          "subService": "Cut & Blow Dry",
+          "customerRequest": "",
+          "customerDetails": {
+            "name": "Pawan",
+            "date": "2025-12-19",
+            "time": "12:16",
+            "duration": "0",
+            "isMember": false,
+            "memberId": ""
+          },
+          "stepTimings": [
+            2685,
+            558,
+            185,
+            181,
+            169,
+            182,
+            222,
+            456
+          ],
+          "images": [],
           "rating": 0
         }
       ]
