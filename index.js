@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -5,18 +6,12 @@ const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
-// CRITICAL FOR RENDER: Must use process.env.PORT
-const PORT = process.env.PORT || 3001;
+// PORT is provided by Render in production, otherwise 5000 for local development
+const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(__dirname, 'database.json');
 
 // Middleware
-// Allow requests from anywhere (for now) to solve connection issues
-app.use(cors({
-    origin: '*', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // Initialize Data
@@ -40,21 +35,24 @@ if (fs.existsSync(DB_FILE)) {
 
 // Helper to save data
 const saveData = () => {
-    // On Render Free Tier, this file resets on deployment, but persists while running
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 };
 
 // --- ROUTES ---
 
-// Health Check (To verify server is running on Render)
+// Root route for status check
 app.get('/', (req, res) => {
-    res.send('Salon Backend is Running!');
+    res.json({
+        status: 'online',
+        service: 'TONI&GUY Academy API',
+        environment: process.env.NODE_ENV || 'development',
+        port: PORT
+    });
 });
 
 // Login
 app.post('/api/login', (req, res) => {
     const { id, password, role } = req.body;
-    console.log(`Login attempt: ${id} (${role})`);
 
     if (role === 'admin') {
         const admin = db.admins.find(a => a.id === id && a.password === password);
@@ -66,6 +64,7 @@ app.post('/api/login', (req, res) => {
     } else {
         const user = db.users.find(u => (u.applicationNumber === id || u.id === id) && u.password === password);
         if (user) {
+            // Don't send password back
             const { password, ...userWithoutPass } = user;
             res.json({ success: true, user: userWithoutPass });
         } else {
@@ -177,5 +176,5 @@ app.post('/api/session/complete', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Backend server running on http://localhost:${PORT}`);
 });
