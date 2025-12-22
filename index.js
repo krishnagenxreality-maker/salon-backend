@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -6,13 +5,13 @@ const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
-// PORT is provided by Render in production, otherwise 5000 for local development
 const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(__dirname, 'database.json');
 
-// Middleware
+// Middleware - Increased limits for video storage
 app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 
 // Initialize Data
 let db = {
@@ -29,31 +28,21 @@ if (fs.existsSync(DB_FILE)) {
         console.error('Error reading database file:', err);
     }
 } else {
-    // Create file if it doesn't exist
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
-// Helper to save data
 const saveData = () => {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 };
 
-// --- ROUTES ---
-
-// Root route for status check
+// Root route
 app.get('/', (req, res) => {
-    res.json({
-        status: 'online',
-        service: 'TONI&GUY Academy API',
-        environment: process.env.NODE_ENV || 'development',
-        port: PORT
-    });
+    res.json({ status: 'online', service: 'TONI&GUY Academy API' });
 });
 
 // Login
 app.post('/api/login', (req, res) => {
     const { id, password, role } = req.body;
-
     if (role === 'admin') {
         const admin = db.admins.find(a => a.id === id && a.password === password);
         if (admin) {
@@ -64,7 +53,6 @@ app.post('/api/login', (req, res) => {
     } else {
         const user = db.users.find(u => (u.applicationNumber === id || u.id === id) && u.password === password);
         if (user) {
-            // Don't send password back
             const { password, ...userWithoutPass } = user;
             res.json({ success: true, user: userWithoutPass });
         } else {
@@ -76,19 +64,17 @@ app.post('/api/login', (req, res) => {
 // Register
 app.post('/api/register', (req, res) => {
     const { applicationNumber, password, role } = req.body;
-
     if (role === 'admin') {
         if (db.admins.find(a => a.id === applicationNumber)) {
-            return res.status(400).json({ success: false, message: 'Admin ID already exists' });
+            return res.status(400).json({ success: false, message: 'Admin ID exists' });
         }
         db.admins.push({ id: applicationNumber, password, name: 'Admin ' + applicationNumber });
         saveData();
         res.json({ success: true });
     } else {
         if (db.users.find(u => u.applicationNumber === applicationNumber)) {
-            return res.status(400).json({ success: false, message: 'Application number already registered' });
+            return res.status(400).json({ success: false, message: 'ID already registered' });
         }
-        
         const newUser = {
             id: 'u_' + Date.now(),
             applicationNumber,
@@ -98,7 +84,6 @@ app.post('/api/register', (req, res) => {
             completedTechniques: [],
             customerSessions: []
         };
-        
         db.users.push(newUser);
         saveData();
         res.json({ success: true, userId: newUser.id });
@@ -108,32 +93,20 @@ app.post('/api/register', (req, res) => {
 // Reset Password
 app.post('/api/reset-password', (req, res) => {
     const { id, newPassword, role } = req.body;
-    
-    if (role === 'admin') {
-        const admin = db.admins.find(a => a.id === id);
-        if (admin) {
-            admin.password = newPassword;
-            saveData();
-            res.json({ success: true });
-        } else {
-            res.status(404).json({ success: false, message: 'Admin ID not found' });
-        }
+    const list = role === 'admin' ? db.admins : db.users;
+    const user = list.find(u => u.id === id || u.applicationNumber === id);
+    if (user) {
+        user.password = newPassword;
+        saveData();
+        res.json({ success: true });
     } else {
-        const user = db.users.find(u => u.applicationNumber === id || u.id === id);
-        if (user) {
-            user.password = newPassword;
-            saveData();
-            res.json({ success: true });
-        } else {
-            res.status(404).json({ success: false, message: 'Candidate not found' });
-        }
+        res.status(404).json({ success: false, message: 'User not found' });
     }
 });
 
 // Get Users
 app.get('/api/users', (req, res) => {
-    const safeUsers = db.users.map(({ password, ...u }) => u);
-    res.json(safeUsers);
+    res.json(db.users.map(({ password, ...u }) => u));
 });
 
 // Get Single User
@@ -147,25 +120,10 @@ app.get('/api/users/:id', (req, res) => {
     }
 });
 
-// Save Progress
-app.post('/api/training/complete', (req, res) => {
-    const { userId, techniqueData } = req.body;
-    const user = db.users.find(u => u.id === userId);
-    
-    if (user) {
-        user.completedTechniques.push(techniqueData);
-        saveData();
-        res.json({ success: true });
-    } else {
-        res.status(404).json({ success: false, message: 'User not found' });
-    }
-});
-
-// Save Session
+// Save Session (Supports Video Data)
 app.post('/api/session/complete', (req, res) => {
     const { userId, sessionData } = req.body;
     const user = db.users.find(u => u.id === userId);
-    
     if (user) {
         user.customerSessions.push(sessionData);
         saveData();
